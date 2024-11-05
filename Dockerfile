@@ -43,32 +43,3 @@ RUN dotnet build Plugins/Grand.Plugin.Widgets.GoogleAnalytics
 RUN dotnet build Plugins/Grand.Plugin.Widgets.FacebookPixel
 RUN dotnet build Plugins/Grand.Plugin.Widgets.Slider
 
-FROM container.babelstreet.com/synopsys-detect as scanner
-ARG BUILD_ENVIRONMENT="local"
-ARG BRANCH_NAME
-ARG FAIL_ON_SEVERITY_LEVEL
-WORKDIR C:/
-SHELL ["pwsh", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
-# Make sure to include any new project's .csproj files
-# DON'T include any test project's .csproj files.
-COPY ["DataSorcerer/DataSorcerer.csproj", "/src/"]
-COPY ["BabelStreet.DataSorcerer/BabelStreet.DataSorcerer.csproj", "/src/"]
-ENV detect.project.name="DataSorcerer"
-# Source can be found at https://git.babelstreet.com/projects/DOC/repos/synopsis-detect/browse/scan.ps1
-RUN pwsh -c $(get-content C:\scan.ps1)
-
-# Build runtime image
-FROM mcr.microsoft.com/dotnet/core/aspnet:3.1.0
-
-RUN apt-get update -qq && apt-get -y install libgdiplus libc6-dev
-
-
-WORKDIR /app
-COPY --from=build-env /app/out/ .
-COPY --from=build-env /app/Grand.Web/Plugins/ ./Plugins/
-
-VOLUME /app/App_Data /app/wwwroot /app/Plugins /app/Themes
-
-RUN chmod 755 /app/Rotativa/Linux/wkhtmltopdf
-
-CMD ["dotnet", "Grand.Web.dll"]
